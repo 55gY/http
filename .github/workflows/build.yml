@@ -19,10 +19,10 @@ jobs:
       with:
         go-version: '1.21'
     
-    - name: 创建go.mod文件
+    - name: 下载依赖
       run: |
-        go mod init http
-        go get github.com/gorilla/handlers
+        go mod download
+        go mod tidy
     
     - name: 构建Windows可执行文件
       run: |
