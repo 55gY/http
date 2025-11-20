@@ -4,7 +4,13 @@ on:
   push:
     tags:
       - 'v*'  # 当推送以 'v' 开头的标签时触发，例如 v1.0.0
+    branches:
+      - main
+      - master  # 支持main或master分支
   workflow_dispatch:  # 允许手动触发
+
+permissions:
+  contents: write
 
 jobs:
   build-and-release:
@@ -35,18 +41,15 @@ jobs:
         if [[ $GITHUB_REF == refs/tags/* ]]; then
           VERSION=${GITHUB_REF#refs/tags/}
         else
-          VERSION="latest"
+          VERSION="v$(date +%Y%m%d%H%M%S)"
         fi
         echo "version=$VERSION" >> $GITHUB_OUTPUT
     
     - name: 创建Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ steps.get_version.outputs.version }}
-        release_name: Release ${{ steps.get_version.outputs.version }}
+        name: Release ${{ steps.get_version.outputs.version }}
         draft: false
         prerelease: false
         body: |
@@ -65,23 +68,6 @@ jobs:
           - 快速启动本地HTTP文件服务器
           - 支持自定义监听地址和端口
           - 自动记录访问日志
-    
-    - name: 上传Windows 64位版本
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./http-windows-amd64.exe
-        asset_name: http-windows-amd64.exe
-        asset_content_type: application/octet-stream
-    
-    - name: 上传Windows 32位版本
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./http-windows-386.exe
-        asset_name: http-windows-386.exe
-        asset_content_type: application/octet-stream
+        files: |
+          http-windows-amd64.exe
+          http-windows-386.exe
