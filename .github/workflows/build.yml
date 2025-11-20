@@ -1,0 +1,87 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送以 'v' 开头的标签时触发，例如 v1.0.0
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置Go环境
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+    
+    - name: 创建go.mod文件
+      run: |
+        go mod init http
+        go get github.com/gorilla/handlers
+    
+    - name: 构建Windows可执行文件
+      run: |
+        GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o http-windows-amd64.exe http.go
+        GOOS=windows GOARCH=386 go build -ldflags="-s -w" -o http-windows-386.exe http.go
+    
+    - name: 获取版本号
+      id: get_version
+      run: |
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+        else
+          VERSION="latest"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+    
+    - name: 创建Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.version }}
+        release_name: Release ${{ steps.get_version.outputs.version }}
+        draft: false
+        prerelease: false
+        body: |
+          ## 📦 HTTP文件服务器 ${{ steps.get_version.outputs.version }}
+          
+          ### 下载说明
+          - **Windows用户**: 下载 `http-windows-amd64.exe` (64位) 或 `http-windows-386.exe` (32位)
+          
+          ### 使用方法
+          ```bash
+          # Windows
+          http-windows-amd64.exe -port 127.0.0.1:8080
+          ```
+          
+          ### 新功能和改进
+          - 快速启动本地HTTP文件服务器
+          - 支持自定义监听地址和端口
+          - 自动记录访问日志
+    
+    - name: 上传Windows 64位版本
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./http-windows-amd64.exe
+        asset_name: http-windows-amd64.exe
+        asset_content_type: application/octet-stream
+    
+    - name: 上传Windows 32位版本
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./http-windows-386.exe
+        asset_name: http-windows-386.exe
+        asset_content_type: application/octet-stream
