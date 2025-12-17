@@ -14,7 +14,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&port, "port", "127.0.0.1:8080", "监听地址:监听端口")
+	flag.StringVar(&port, "port", "0.0.0.0:8080", "监听地址:监听端口")
 }
 
 func main() {
